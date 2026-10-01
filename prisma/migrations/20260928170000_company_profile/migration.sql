@@ -1,0 +1,4 @@
+ALTER TABLE "companies"
+  ADD COLUMN IF NOT EXISTS "logo_url" TEXT,
+  ADD COLUMN IF NOT EXISTS "primary_color" VARCHAR(7),
+  ADD COLUMN IF NOT EXISTS "bot_language" VARCHAR(2) NOT NULL DEFAULT 'fr';

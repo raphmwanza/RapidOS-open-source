@@ -1,0 +1,10 @@
+.next/
+.next-dev/
+dist/
+build/
+node_modules/
+coverage/
+prisma/migrations/
+backend/rapidos-api
+backend/bin/
+**/*.d.ts

@@ -1,0 +1,23 @@
+# Build context for the dashboard image (frontend/Dockerfile, context = repo root)
+.git
+.github
+.vscode
+.idea
+node_modules
+.next
+.next-dev
+out
+build
+coverage
+backend
+exports
+__tests__
+uploads
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+Dockerfile*
+docker-compose*
+.DS_Store

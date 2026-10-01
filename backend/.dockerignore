@@ -1,0 +1,6 @@
+.gocache
+bin
+rapidos-api
+*.exe
+.env
+.env.*

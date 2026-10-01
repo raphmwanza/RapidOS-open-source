@@ -1,0 +1,180 @@
+# Local development stack for RapidOS.
+#   cp .env.example .env   (then fill in the secrets)
+#   docker compose up -d --build
+# Dashboard: http://localhost:3000   Backend: http://localhost:8080/health
+name: rapidos-oss
+
+x-db-url: &db-url postgres://${POSTGRES_USER:-rapidos_admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-rapidos}?sslmode=disable
+x-redis-url: &redis-url redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+x-dashboard-build: &dashboard-build
+  context: .
+  dockerfile: frontend/Dockerfile
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rapidos}
+      POSTGRES_USER: ${POSTGRES_USER:-rapidos_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot job: applies Prisma migrations, then exits. The dashboard and the
+  # API only start after it finished successfully.
+  migrate:
+    build: *dashboard-build
+    image: rapidos-oss-dashboard:local
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: *db-url
+      DIRECT_DATABASE_URL: *db-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rapidos-oss-api:local
+    environment:
+      API_PORT: 8080
+      DATABASE_URL: *db-url
+      REDIS_URL: *redis-url
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES:-15m}
+      JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-168h}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
+      # Browser origins allowed to call the Go API directly (comma-separated).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      FRONTEND_BASE_URL: http://dashboard:3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Optional single-tenant fallbacks; per-company values live in Settings.
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_WEBHOOK_URL: ${WHATSAPP_WEBHOOK_URL:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      # Meta Graph API base for messages and media (empty = https://graph.facebook.com/v18.0).
+      WHATSAPP_GRAPH_API_BASE: ${WHATSAPP_GRAPH_API_BASE:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-90}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8080}:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  dashboard:
+    build: *dashboard-build
+    image: rapidos-oss-dashboard:local
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: *db-url
+      DIRECT_DATABASE_URL: *db-url
+      REDIS_URL: *redis-url
+      BACKEND_URL: http://api:8080
+      NEXT_PUBLIC_API_URL: http://localhost:${API_HOST_PORT:-8080}
+      # Public base URL of the Go API as Meta sees it (e.g. https://<id>.ngrok-free.app).
+      # Default shown in Settings > WhatsApp; each company can override it there.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-900}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-604800}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
+      BACKEND_API_KEY: ${BACKEND_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SIGNUP_RATE_LIMIT_PER_HOUR: ${SIGNUP_RATE_LIMIT_PER_HOUR:-5}
+      # Unset = ignore X-Forwarded-For and rate-limit by socket IP. Set to true (or a hop
+      # count) only when a reverse proxy you control sits in front of the dashboard.
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
+      CONTACT_RATE_LIMIT_PER_HOUR: ${CONTACT_RATE_LIMIT_PER_HOUR:-5}
+      # Claim documents, WhatsApp media and generated claim PDFs
+      # (companies/<companyId>/claims/<claimId>/...), kept in the dashboard_files volume.
+      FILE_STORAGE_DIR: /app/storage
+      # Unicode font for claim PDFs (DejaVu Sans, installed in the image).
+      PDF_FONT_DIR: /usr/share/fonts/truetype/dejavu
+    volumes:
+      - dashboard_files:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Optional DB browser: docker compose --profile tools up -d adminer
+  adminer:
+    image: adminer:latest
+    profiles: ["tools"]
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
+  dashboard_files:

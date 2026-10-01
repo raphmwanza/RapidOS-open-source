@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Production builds
+dist/
+build/
+
+# Environment variables
+.env*
+!.env.example
+backend/.env
+
+# Database
+*.db
+*.sqlite
+dev.db
+
+# Go
+backend/bin/
+backend/rapidos-api
+.gocache/
+*.exe
+*.dll
+*.test
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Backups and local exports
+*.bak
+*.backup
+*.sql.gz
+
+# Temporary files
+*.tmp
+*.temp
+.next-dev/cache/webpack/client-development/5.pack.gz
+/.next-dev/cache
+/.next-dev

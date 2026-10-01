@@ -1,0 +1,22 @@
+[install]
+# Configure package installation
+cache = true
+exact = false
+production = false
+optional = true
+
+[install.lockfile]
+# Save exact versions in lockfile
+save = true
+print = "yarn"
+
+[build]
+# Build configuration
+target = "bun"
+outdir = "./dist"
+sourcemap = "external"
+
+# Performance settings
+[performance]
+# Enable parallel processing
+parallel = true

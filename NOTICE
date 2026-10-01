@@ -1,0 +1,21 @@
+RapidOS
+Copyright (C) 2026 Raph Mwanza <raphmwanza5@gmail.com>
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3 of the License (AGPL-3.0-only).
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program (the LICENSE file). If not, see <https://www.gnu.org/licenses/>.
+
+Section 13 (remote network interaction): if you modify RapidOS and let users
+interact with it over a network, you must offer them the corresponding source
+code of your version. The marketing site footer links to the source and license;
+keep such a link, pointing to your own repository, in a modified version.
+
+The RapidOS name and logo are not licensed under the AGPL; see TRADEMARK.md.
+Third-party dependencies keep their own licenses.
