@@ -1,8 +1,9 @@
 // Public site settings for the marketing pages (landing, docs, pricing).
 
-// Read at runtime on the server (a computed key is not inlined at build time),
-// so the docker-compose NEXT_PUBLIC_BASE_URL is used for canonical and OG URLs.
-const BASE_URL_KEY = 'NEXT_PUBLIC_BASE_URL';
+import { runtimeEnv } from '@/lib/runtimeEnv';
+
+// Read at runtime on the server (see lib/runtimeEnv.ts), so the NEXT_PUBLIC_BASE_URL
+// set on the container is used for canonical and OG URLs.
 
 export const SITE = {
   name: 'RapidOS',
@@ -10,7 +11,7 @@ export const SITE = {
   description:
     'RapidOS is an open-source WhatsApp assistant and dashboard that lets insurers in emerging markets receive, document and track claims where their customers already are.',
   /** Public URL of this dashboard (canonical links, OG image). */
-  url: (typeof process !== 'undefined' && process.env[BASE_URL_KEY]) || 'http://localhost:3000',
+  url: runtimeEnv('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000',
   /** Sales and contact address (pricing, /contact, mailto links). */
   contactEmail: 'raphmwanza5@gmail.com',
   /** Public source repository (AGPL-3.0 section 13 source link, clone commands). */

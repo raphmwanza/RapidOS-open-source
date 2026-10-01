@@ -152,6 +152,14 @@ docker compose up -d                    # start again`}
         <li>Set <C>NEXT_PUBLIC_BASE_URL</C> to your dashboard URL, <C>PUBLIC_API_URL</C> to the public API URL and <C>CORS_ALLOWED_ORIGINS</C> to the dashboard origin.</li>
         <li>Set <C>TRUSTED_PROXY=true</C> when the proxy is the only way in, so rate limits see the real client IP.</li>
         <li>Back up the database <strong>and</strong> the files volume every day, and keep a copy of <C>.env</C> (especially <C>ENCRYPTION_KEY</C>) somewhere safe.</li>
+        <li>
+          Deploying on Railway instead of your own server? The service settings and every variable, with Railway&apos;s <C>{'${{Postgres.DATABASE_URL}}'}</C>{' '}
+          references, are in{' '}
+          <a className={a} href={`${SITE.githubUrl}/blob/main/docs/railway.md`} target="_blank" rel="noopener noreferrer">
+            docs/railway.md
+          </a>
+          .
+        </li>
       </UL>
       <CodeBlock
         label="Caddyfile"

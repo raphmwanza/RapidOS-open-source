@@ -29,12 +29,12 @@ WORKDIR /root/
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
 
-# Expose port
+# Listens on $PORT when the platform sets it (Railway), else $API_PORT, else 8080.
 EXPOSE 8080
 
-# Health check
+# Health check (Docker / docker compose; Railway uses its own healthcheck path)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl --fail http://localhost:8080/health || exit 1
+  CMD curl --fail "http://localhost:${PORT:-${API_PORT:-8080}}/health" || exit 1
 
 # Run the binary
 CMD ["./main"]

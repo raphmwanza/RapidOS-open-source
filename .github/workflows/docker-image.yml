@@ -1,34 +1,96 @@
-name: Go Build & Docker
+# CI for the Go API (backend/) and the Next.js dashboard (repository root).
+# Railway's "Wait for CI" waits for this workflow on the branch it deploys (prod),
+# so it must run, and pass, on pushes to prod as well as main.
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, prod, railway-ready]
   pull_request:
-    branches: [ main ]
+    branches: [main, prod]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  backend:
+    name: Go API (vet, test, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Download and verify modules
+        run: go mod download && go mod verify
+      - name: go.mod and go.sum are tidy
+        run: go mod tidy -diff
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: Build the API binary
+        run: go build -o /dev/null ./cmd/api
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+  dashboard:
+    name: Dashboard (locales, types, unit tests, lint)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Locale files
+        run: npm run check:locales
+      - name: Type check
+        run: npm run type-check
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Lint
+        run: npm run lint
 
-    - name: Install dependencies
-      run: |
-        cd backend
-        go mod tidy
-
-    - name: Run tests
-      run: |
-        cd backend
-        go test ./...
-
-    - name: Build Docker image
-      run: |
-        docker build -f backend/Dockerfile -t rapidos-api ./backend
+  docker:
+    # Builds the images exactly as Railway and docker compose do. Nothing is pushed:
+    # the original workflow only built, and the repository has no registry secrets.
+    name: Docker image (${{ matrix.image }})
+    needs: [backend, dashboard]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: backend
+            file: backend/Dockerfile
+          - image: dashboard
+            context: .
+            file: frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build ${{ matrix.file }}
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          tags: rapidos-${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

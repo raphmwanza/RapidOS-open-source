@@ -5,6 +5,7 @@ import { prisma } from './prisma';
 import { logger, generateCorrelationId, setCorrelationId } from './logger';
 import { READ_ONLY_ROLES } from './users/roles';
 import { sessionIsCurrent, sessionReplacedBody } from './sessionPolicy';
+import { runtimeEnv } from './runtimeEnv';
 
 const authLogger = logger.child({ service: 'auth-middleware' });
 
@@ -248,8 +249,8 @@ export function corsMiddleware(request: NextRequest): NextResponse | null {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
-    process.env.NEXT_PUBLIC_APP_URL,
-    process.env.NEXT_PUBLIC_BASE_URL
+    runtimeEnv('NEXT_PUBLIC_APP_URL'),
+    runtimeEnv('NEXT_PUBLIC_BASE_URL'),
   ].filter(Boolean);
 
   if (origin && !allowedOrigins.includes(origin)) {

@@ -2,6 +2,8 @@
 // The Go API serves the webhook at a fixed path; only the public base URL
 // (how Meta reaches the API, e.g. an ngrok tunnel) varies per deployment.
 
+import { firstRuntimeEnv } from '@/lib/runtimeEnv';
+
 export const WEBHOOK_PATH = '/api/v1/whatsapp/webhook';
 
 /** Verify tokens are shared secrets: 8-128 printable ASCII characters, no spaces. */
@@ -56,7 +58,7 @@ export function isPublicHttpsUrl(baseUrl: string): boolean {
 
 /** Server-side default shown until an admin saves an override. */
 export function defaultPublicBaseUrl(): string {
-  const fromEnv = process.env.PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const fromEnv = firstRuntimeEnv('PUBLIC_API_URL', 'NEXT_PUBLIC_API_URL') || 'http://localhost:8080';
   const normalized = normalizePublicBaseUrl(fromEnv);
   return (normalized.ok && normalized.value) || 'http://localhost:8080';
 }

@@ -4,6 +4,7 @@ import { getOrCreateClaimPdf } from '@/lib/pdf/claimPdfService';
 import { authOrInternalKeyMiddleware, getAdminFromRequest, getBackendInternalHeaders, isValidInternalApiKey } from '@/lib/middleware';
 import { loadMessages, normalizeLocale, translate, type Locale } from '@/lib/i18n';
 import { generatePdfAccessToken } from '@/lib/auth';
+import { runtimeEnv } from '@/lib/runtimeEnv';
 
 // May generate PDF + send via WhatsApp
 export const maxDuration = 30; // seconds
@@ -142,7 +143,7 @@ async function sendPDFToCustomer(
   reason: string
 ): Promise<boolean> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const baseUrl = runtimeEnv('NEXT_PUBLIC_BASE_URL');
     if (!baseUrl) throw new Error('NEXT_PUBLIC_BASE_URL is required to send PDF links');
     const pdfAccessToken = generatePdfAccessToken(claimNumber, companyId);
     const fullPdfUrl = `${baseUrl}${pdfPath}?accessToken=${encodeURIComponent(pdfAccessToken)}`;

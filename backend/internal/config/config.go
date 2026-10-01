@@ -114,7 +114,9 @@ func (c *Config) LLMConfig() LLMSettings { return c.LLMSettings() }
 func Load() *Config {
 	_ = godotenv.Load()
 	cfg := &Config{
-		APIPort:          getEnv("API_PORT", "8080"),
+		// PORT is set by Railway, Heroku-style and Cloud Run hosts; API_PORT is the
+		// docker-compose / host-run setting.
+		APIPort:          firstNonEmpty(os.Getenv("PORT"), os.Getenv("API_PORT"), "8080"),
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://localhost:5432/rapidos?sslmode=disable"),
 		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		JWTAccessSecret:  mustEnv("JWT_ACCESS_SECRET"),

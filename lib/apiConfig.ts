@@ -1,3 +1,5 @@
+import { runtimeEnv } from './runtimeEnv';
+
 /**
  * API Configuration for different environments
  */
@@ -27,11 +29,11 @@ export function getApiBaseUrl(): string {
     }
     
     // Fallback to environment variable
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    return runtimeEnv('NEXT_PUBLIC_API_URL') || 'http://localhost:8080';
   }
   
   // Server-side: Use environment variable
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  return runtimeEnv('NEXT_PUBLIC_API_URL') || 'http://localhost:8080';
 }
 
 // API endpoints configuration
